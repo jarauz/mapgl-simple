@@ -1,8 +1,8 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoidXJiYW4wMSIsImEiOiJjam50MXJoMG4wMXBqM3FwbWViMjN5MW1wIn0.fw5_hMbQv0qyZkLaVJBbFQ';
 
-coordinatesFile = 'trips-ec.csv';
-let dataArray=[];  // will be populated with data read from csv file
-let routeArray=[]; // will be populated with coord for each orig/dest
+tripsFile = 'trips-ec.json';
+let trips = {};
+
 
 const map = new mapboxgl.Map({
   container: 'map',
@@ -37,54 +37,45 @@ function pointOnCircle(angle) {
 let ptemp = new PointSource('point3', origin, destination, 'circle', 15, 'green');
 
 // Read coordinate data from file
-async function getCsvData(fileName){
+async function getCsvData(fileName) {
   const response = await fetch(fileName);
   const data = await response.text();
-  let i=0;
-
-
+  let i = 0;
   const table = data.split('\n');
-  table.forEach( row => {
+  table.forEach(row => {
     const r = row.split(',');
-    dataArray[i]=r;
+    dataArray[i] = r;
     i++;
   })
 }
 
+async function getJsonData(fileName) {
+  const response = await fetch(fileName);
+  const data = await response.json();
+  return data;
+}
+
 async function getRoute(origin, destination) {
 
-  const query = await fetch( `https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`,
+  const query = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`,
     { method: 'GET' }
   );
   const json = await query.json();
   const data = json.routes[0];
-  const rte = data.geometry.coordinates;
+  //const rte = data.geometry.coordinates;
 
-  return rte;
+  return data;
 
 }
 
-async function getAllTripRoutes(data){
-  const trips = data.length;
-  data.forEach( row => {
-    getRoute([parseFloat(row[0]), parseFloat(row[1])],[parseFloat(row[2]), parseFloat(row[3])]).then( (r) =>{
-      routeArray.push(r);
-    });
-  })
+async function getAllTripRoutes(trips) {
   
+
 }
 
-fetch("trips-ec.json")
-.then(response => {
-   return response.json();
-})
-.then(jsondata => console.log(jsondata));
-
-// Read the csv file with coordinate orig/dest info and then
-// for each orig/dest compute the trip route
-// getCsvData(coordinatesFile).then( () => {
-//   getAllTripRoutes(dataArray);
-// })
+// Read JSON file with orig/dest, color, size, etc
+getJsonData(tripsFile)
+  .then( (d) => { trips = d });
 
 
 
@@ -125,14 +116,14 @@ map.on('load', () => {
     }
   });
 
-   //map.addLayer(ptemp.pointLayerObj);
+  //map.addLayer(ptemp.pointLayerObj);
 
   function animateCircle(timestamp) {
     // Update the data to a new position based on the animation timestamp. The
     // divisor in the expression `timestamp / 1000` controls the animation speed.
-    
+
     map.getSource('point').setData(pointOnCircle(timestamp / 5000));
-        map.getSource('point2').setData(pointOnCircle(timestamp / 4000));
+    map.getSource('point2').setData(pointOnCircle(timestamp / 4000));
 
     // Request the next frame of the animation.
     // animateCircle is the callback and is given a timestamp
@@ -153,10 +144,10 @@ map.on('load', () => {
 
   document.getElementById('replay').addEventListener('click', () => {
     // Toggle the animation status then start or stop animation
-    animStatus = !animStatus; 
+    animStatus = !animStatus;
     if (!animStatus) cancelAnimationFrame(animRequest);
-      else animRequest = animateCircle(0);
-      
+    else animRequest = animateCircle(0);
+
 
   }); // end event listener click
 

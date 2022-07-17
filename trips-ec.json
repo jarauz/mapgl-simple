@@ -1,16 +1,20 @@
 { 
- "trips":[
+ "geopair":[
  {
    "origin": [-79.88,-2.18],
    "destination": [-78.5,-0.18],
    "color": "blue",
-   "mapbox-api-route": {}
+   "shape": "circle",
+   "size": 10,
+   "mapboxapiroute": {}
  },
  {
   "origin": [-79.88,-2.18],
   "destination": [-78.5,-0.18],
   "color": "green",
-  "mapbox-api-route": {}
+  "shape": "circle",
+  "size": 10,
+  "mapboxapiroute": {}
  }
  ]
 }
