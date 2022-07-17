@@ -82,7 +82,7 @@ fetch("trips-ec.json")
 
 // Read the csv file with coordinate orig/dest info and then
 // for each orig/dest compute the trip route
-// getData(coordinatesFile).then( () => {
+// getCsvData(coordinatesFile).then( () => {
 //   getAllTripRoutes(dataArray);
 // })
 
