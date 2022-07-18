@@ -61,21 +61,27 @@ async function getRoute(origin, destination) {
     { method: 'GET' }
   );
   const json = await query.json();
-  const data = json.routes[0];
+  //const data = json.routes[0];
   //const rte = data.geometry.coordinates;
-
-  return data;
-
+  return json;
 }
 
 async function getAllTripRoutes(trips) {
-  
+  for(let i=0; i < trips.geopair.length; i++){
+    const org = [trips.geopair[i].origin];
+    const dst = [trips.geopair[i].destination];
+    const res = await getRoute(org, dst);
+    trips.geopair[i].mapboxapiroute = res;
+  }
 
 }
 
 // Read JSON file with orig/dest, color, size, etc
 getJsonData(tripsFile)
-  .then( (d) => { trips = d });
+  .then( (d) => { trips = d })
+  .then( () => getAllTripRoutes(trips) )
+  .then( () => console.log(trips));
+
 
 
 
