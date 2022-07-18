@@ -24,12 +24,13 @@ const radius = 0.6;
 let animRequest;
 let animStatus = false;
 
+let counter=0;
 
-
-function pointOnCircle(angle) {
+function pointOnCircle(p) {
+  counter++;
   return {
     'type': 'Point',
-    'coordinates': [Math.cos(angle) * radius - 79, Math.sin(angle) * radius]
+    'coordinates': trips.geopair[0].mapboxapiroute.routes[0].geometry.coordinates[counter]
   };
 }
 
@@ -93,10 +94,10 @@ map.on('load', () => {
     'data': pointOnCircle(0)
   });
 
-  map.addSource('point2', {
-    'type': 'geojson',
-    'data': pointOnCircle(0)
-  });
+  // map.addSource('point2', {
+  //   'type': 'geojson',
+  //   'data': pointOnCircle(0)
+  // });
 
 
   //map.addSource(ptemp.pointSourceObj[0], ptemp.pointSourceObj[1]);
@@ -112,15 +113,15 @@ map.on('load', () => {
     }
   });
 
-  map.addLayer({
-    'id': 'point2',
-    'source': 'point2',
-    'type': 'circle',
-    'paint': {
-      'circle-radius': 10,
-      'circle-color': 'red'
-    }
-  });
+  // map.addLayer({
+  //   'id': 'point2',
+  //   'source': 'point2',
+  //   'type': 'circle',
+  //   'paint': {
+  //     'circle-radius': 10,
+  //     'circle-color': 'red'
+  //   }
+  // });
 
   //map.addLayer(ptemp.pointLayerObj);
 
@@ -128,8 +129,8 @@ map.on('load', () => {
     // Update the data to a new position based on the animation timestamp. The
     // divisor in the expression `timestamp / 1000` controls the animation speed.
 
-    map.getSource('point').setData(pointOnCircle(timestamp / 5000));
-    map.getSource('point2').setData(pointOnCircle(timestamp / 4000));
+    map.getSource('point').setData(pointOnCircle(timestamp / 50));
+    //map.getSource('point2').setData(pointOnCircle(timestamp / 4000));
 
     // Request the next frame of the animation.
     // animateCircle is the callback and is given a timestamp
