@@ -1,167 +1,157 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoidXJiYW4wMSIsImEiOiJjam50MXJoMG4wMXBqM3FwbWViMjN5MW1wIn0.fw5_hMbQv0qyZkLaVJBbFQ';
 
+// Variables to read and store json data with coordinates
+// and other config info
 tripsFile = 'trips-ec.json';
-let trips = {};
+let trips = {}; // Object that will all json data and routes
+let srcArray = []; // Array of map source objects
+let layArray = []; // Array of map layer objects
 
-
-const map = new mapboxgl.Map({
-  container: 'map',
-  style: 'mapbox://styles/mapbox/streets-v11',
-  center: [-78, -2], // starting position
-  zoom: 6
-});
-
-// Guayaquil
-const origin = [-79.88, -2.18];
-
-// Quito
-const destination = [-78.5, -0.18];
-
-
-const radius = 0.6;
-
-// Animation controls
+// Variables to control progress and status of animation
+let start, previousTimeStamp = [], counter = [], direction = [];
 let animRequest;
 let animStatus = false;
 
-let counter=0;
+// map var for mapbox map creation
+let map;
 
-function pointOnCircle(p) {
-  counter++;
+function pointOnCircle(i) {
+  // Grabs coordinates from trips object
+  // and updates coordinates to animate trip(s) on map
+  // i is the index of the geopair to animate
+  const coord = trips.geopairs[i].mapboxapiroute.routes[0].geometry.coordinates;
+
+  // Show roundtrip
+  if ((counter[i] < coord.length) && direction[i]) counter[i]++;
+  if ((counter[i] == coord.length)) direction[i] = 0;
+  if ((counter[i] > 0) && !direction[i]) counter[i]--;
+  if ((counter[i] == 0)) direction[i] = 1;
   return {
     'type': 'Point',
-    'coordinates': trips.geopair[0].mapboxapiroute.routes[0].geometry.coordinates[counter]
+    'coordinates': trips.geopairs[i].mapboxapiroute.routes[0].geometry.coordinates[counter[i]]
   };
 }
 
-
-let ptemp = new PointSource('point3', origin, destination, 'circle', 15, 'green');
-
-// Read coordinate data from file
-async function getCsvData(fileName) {
-  const response = await fetch(fileName);
-  const data = await response.text();
-  let i = 0;
-  const table = data.split('\n');
-  table.forEach(row => {
-    const r = row.split(',');
-    dataArray[i] = r;
-    i++;
-  })
-}
-
 async function getJsonData(fileName) {
+  // Reads the json file containing geopairs and 
+  // all config info, returns a json object
+  // with all info from the file
   const response = await fetch(fileName);
   const data = await response.json();
   return data;
 }
 
 async function getRoute(origin, destination) {
-
+  // Calls Mapbox Directions API and retrieves
+  // route for one geopair (retrieved from trips)
+  // returns
   const query = await fetch(`https://api.mapbox.com/directions/v5/mapbox/driving/${origin[0]},${origin[1]};${destination[0]},${destination[1]}?geometries=geojson&access_token=${mapboxgl.accessToken}`,
     { method: 'GET' }
   );
   const json = await query.json();
-  //const data = json.routes[0];
-  //const rte = data.geometry.coordinates;
-  return json;
+  return json; // return all object (it will be put in trips)
 }
 
 async function getAllTripRoutes(trips) {
-  for(let i=0; i < trips.geopair.length; i++){
-    const org = [trips.geopair[i].origin];
-    const dst = [trips.geopair[i].destination];
+  // Uses the json routes returned by getRoute and
+  // stores inside trips
+  for (let i = 0; i < trips.geopairs.length; i++) {
+    const org = [trips.geopairs[i].origin];
+    const dst = [trips.geopairs[i].destination];
     const res = await getRoute(org, dst);
-    trips.geopair[i].mapboxapiroute = res;
+    trips.geopairs[i].mapboxapiroute = res;
   }
-
 }
 
-// Read JSON file with orig/dest, color, size, etc
-getJsonData(tripsFile)
-  .then( (d) => { trips = d })
-  .then( () => getAllTripRoutes(trips) )
-  .then( () => console.log(trips));
-
-
-
-
-map.on('load', () => {
-
-  // Add a source and layer displaying a point which will be animated in a circle.
-  map.addSource('point', {
-    'type': 'geojson',
-    'data': pointOnCircle(0)
-  });
-
-  // map.addSource('point2', {
-  //   'type': 'geojson',
-  //   'data': pointOnCircle(0)
-  // });
-
-
-  //map.addSource(ptemp.pointSourceObj[0], ptemp.pointSourceObj[1]);
-
-
-  map.addLayer({
-    'id': 'point',
-    'source': 'point',
-    'type': 'circle',
-    'paint': {
-      'circle-radius': 10,
-      'circle-color': 'brown'
-    }
-  });
-
-  // map.addLayer({
-  //   'id': 'point2',
-  //   'source': 'point2',
-  //   'type': 'circle',
-  //   'paint': {
-  //     'circle-radius': 10,
-  //     'circle-color': 'red'
-  //   }
-  // });
-
-  //map.addLayer(ptemp.pointLayerObj);
-
-  function animateCircle(timestamp) {
-    // Update the data to a new position based on the animation timestamp. The
-    // divisor in the expression `timestamp / 1000` controls the animation speed.
-
-    map.getSource('point').setData(pointOnCircle(timestamp / 50));
-    //map.getSource('point2').setData(pointOnCircle(timestamp / 4000));
-
-    // Request the next frame of the animation.
-    // animateCircle is the callback and is given a timestamp
-    // similar to performance.now()
-    animRequest = requestAnimationFrame(animateCircle);
+async function createSrcAndLyr() {
+  // Called after trips has been populated with data from
+  // json file, takes this data and creates point and layers
+  const shp = 'circle';
+  const sze = 15;
+  const clr = 'green';
+  for (let i = 0; i < trips.geopairs.length; i++) {
+    const org = trips.geopairs[i].origin;
+    const dst = trips.geopairs[i].destination;
+    const shp = trips.geopairs[i].shape;
+    const sze = trips.geopairs[i].size;
+    const clr = trips.geopairs[i].color;
+    srcArray[i] = new PointSource(`point${i}`, org, dst, shp, sze, clr);
   }
+}
+
+// The series of promises below make sure all the elements
+// have been read before the map is drawn
+
+getJsonData(tripsFile) // Read JSON file  orig/dest, etc
+  .then((d) => { trips = d })
+  .then(() => getAllTripRoutes(trips)) // Get all coords
+  .then(() => createSrcAndLyr())
+  .then(() => {
+    map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/traffic-night-v2',
+      center: [-78, -2], // starting position
+      zoom: 6,
+      pitch: 30
+    });
+    map.on('load', () => {
+
+      srcArray.forEach((elem) => {
+        map.addSource(elem.pointSourceObj[0], elem.pointSourceObj[1]);
+        map.addLayer(elem.pointLayerObj);
+      });
+
+      // Zero out elements of previousTimeStamp, counter
+      // and direction arrays used 
+      // for animation of map elements
+      for (let i = 0; i < trips.geopairs.length; i++) {
+        previousTimeStamp[i] = 0;
+        counter[i] = 0;
+        direction[i] = 0;
+      }
+
+      function animateMapElements(timestamp) {
+
+        // Iterate over all map elements to be animated
+        for (let i = 0; i < trips.geopairs.length; i++) {
+          updateRate = trips.geopairs[i].updateRate;
+
+          if (timestamp > (previousTimeStamp[i] + updateRate)) {
+            previousTimeStamp[i] = timestamp;
+            map.getSource(srcArray[i].id).setData(pointOnCircle(i));
+          }
+        } // end for i
+        
+        // Request the next frame of the animation.
+        // animateCircle is the callback and is given a timestamp
+        // similar to performance.now()
+        animRequest = requestAnimationFrame(animateMapElements);
+      }
 
 
-  //Create a new marker.
-  const marker = new mapboxgl.Marker(
-    {
-      color: 'blue',
-      draggable: true
-    }
-  )
-    .setLngLat([-78.5, -.18])
-    .addTo(map);
+      //Create a new marker.
+      const marker = new mapboxgl.Marker(
+        {
+          color: 'blue',
+          draggable: true
+        }
+      )
+        .setLngLat([-78.5, -.18])
+        .addTo(map);
 
-  document.getElementById('replay').addEventListener('click', () => {
-    // Toggle the animation status then start or stop animation
-    animStatus = !animStatus;
-    if (!animStatus) cancelAnimationFrame(animRequest);
-    else animRequest = animateCircle(0);
-
-
-  }); // end event listener click
+      document.getElementById('replay').addEventListener('click', () => {
+        // Toggle the animation status then start or stop animation
+        animStatus = !animStatus;
+        if (!animStatus) cancelAnimationFrame(animRequest);
+        else animRequest = animateMapElements(0);
+      }); // end event listener click
 
 
 
-}) // end map on load
+    }) // end map on load
+
+  }).
+  then(() => console.log('Done loading and creating'));
 
 
-// Class for holding point sources
 
